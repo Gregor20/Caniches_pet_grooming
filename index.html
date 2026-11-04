@@ -1029,7 +1029,7 @@ input[type=date].input{color-scheme:dark}
   </div>
   <div class="wrap foot-bar">
     <span>© <span id="yr">2026</span> Caniches Pet Grooming</span>
-    <span><button class="linkbtn" type="button" data-open="legal">Aviso legal</button> · Fotos: Unsplash</span>
+    <span><button class="linkbtn" type="button" data-open="legal">Aviso legal</button><span id="creditUnsplash"> · Fotos: Unsplash</span></span>
   </div>
 </footer>
 
@@ -1109,7 +1109,13 @@ const CONFIG = {
     claims: { ozono: false, organica: false, hipoalergenico: false, biotecnologico: false }
   },
 
-  /* Fotos de Unsplash comprobadas (responden 200 y son caniches). Las de stock son ilustrativas, no trabajos del salón. */
+  /* Fotos. Cada entrada admite UNA de estas dos fuentes:
+       · id:  'photo-…'            → foto de Unsplash (ilustrativa, NO es trabajo del salón)
+       · src: 'img/fotos/teddy.webp' → foto propia del cliente (ruta relativa o URL completa)
+     w y h son el ancho y alto reales en px (evitan saltos de maquetación); alt describe la foto.
+     Si una entrada lleva src, se usa ese archivo tal cual y se ignora id.
+     El crédito «Fotos: Unsplash» del footer se oculta solo cuando ya no queda ninguna foto con id.
+     Las de Unsplash actuales están comprobadas (responden 200 y son caniches). */
   photos: {
     heroA:       { id: 'photo-1651273427958-bf78352e39be', w: 800, h: 1200, alt: 'Caniche albaricoque con la cabeza ladeada sobre fondo oscuro' },
     heroB:       { id: 'photo-1667581207771-3ec800b19baf', w: 800, h: 1100, alt: 'Caniche negro sentado entre cojines rosas' },
@@ -1207,7 +1213,8 @@ const icons = () => { if (window.lucide) window.lucide.createIcons({ attrs: { 's
 
 const waPhone = () => (CONFIG.brand.phones.find(p => p.whatsapp) || CONFIG.brand.phones[0]).e164.replace('+', '');
 const waUrl = text => `https://wa.me/${waPhone()}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
-const defaultMsg = () => `${CONFIG.brand.greeting} 👋 Me gustaría reservar cita en ${CONFIG.brand.name} para mi caniche. ¿Qué disponibilidad tenéis?`;
+/* Sin emoji en los mensajes precargados: algunos clientes de WhatsApp (p. ej. la app de escritorio de Windows) rompen los emojis de 4 bytes y pintan «�». */
+const defaultMsg = () => `${CONFIG.brand.greeting}, me gustaría reservar cita en ${CONFIG.brand.name} para mi caniche. ¿Qué disponibilidad tenéis?`;
 const activeExtras = () => CONFIG.extras.filter(e => !e.claim || CONFIG.flags.claims[e.claim]);
 const serviceTitle = s => {
   if (s.claimTitle) for (const k in s.claimTitle) if (CONFIG.flags.claims[k]) return s.claimTitle[k];
@@ -1217,9 +1224,12 @@ const mapsQuery = () => encodeURIComponent(CONFIG.brand.address.mapsQuery);
 const addressLine = () => { const a = CONFIG.brand.address; return `${a.street}, ${a.zip} ${a.city}`; };
 
 const U = (id, w) => `https://images.unsplash.com/${id}?auto=format&fit=max&w=${w}&q=72`;
+/* Foto propia (src) o de Unsplash (id). Con src el archivo se sirve tal cual: hay que subirlo ya optimizado (WebP). */
+const photoSrc = (p, w) => p.src ? p.src : U(p.id, w);
 const photoImg = (key, w, eager = false) => {
   const p = CONFIG.photos[key];
-  return `<img src="${U(p.id, w)}" alt="${esc(p.alt)}" width="${p.w}" height="${p.h}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async" onerror="this.parentElement.classList.add('is-broken')">`;
+  if (!p) { console.warn(`CONFIG.photos["${key}"] no existe`); return ''; }
+  return `<img src="${esc(photoSrc(p, w))}" alt="${esc(p.alt)}" width="${p.w}" height="${p.h}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async" onerror="this.parentElement.classList.add('is-broken')">`;
 };
 
 /* ═════════ Render: contacto compartido (dorso de tarjeta, visita, footer) ═════════ */
@@ -1455,6 +1465,7 @@ function renderFooter() {
     <li><a href="${b.instagram.url}" target="_blank" rel="noopener">@${esc(b.instagram.handle)}</a></li>
     <li><a href="https://www.google.com/maps/search/?api=1&query=${mapsQuery()}" target="_blank" rel="noopener">${esc(b.address.street)}<br>${esc(b.address.zip)} ${esc(b.address.city)}</a></li>`;
   $('#yr').textContent = new Date().getFullYear();
+  $('#creditUnsplash').hidden = !Object.values(CONFIG.photos).some(p => !p.src);
   $('#legalBody').innerHTML = `
     <p><b>Titular:</b> ${esc(b.owner)} · ${esc(b.name)}</p>
     <p><b>Domicilio:</b> ${esc(addressLine())}</p>
@@ -1995,7 +2006,7 @@ const Calc = (() => {
     return { size, svc, ex, base, total, minutes, low, high };
   };
   const message = c => [
-    `${CONFIG.brand.greeting} 👋 Quiero reservar cita en ${CONFIG.brand.name}.`,
+    `${CONFIG.brand.greeting}, quiero reservar cita en ${CONFIG.brand.name}.`,
     `• Caniche: ${c.size.label} (${c.size.range})`,
     `• Servicio: ${c.svc.calcLabel}`,
     c.ex.length ? `• Extras: ${c.ex.map(e => e.label).join(', ')}` : null,
@@ -2066,7 +2077,7 @@ const Booking = (() => {
     }
     const notes = String(fd.get('notes') || '').trim();
     const msg = [
-      `${CONFIG.brand.greeting} 👋 Soy ${String(fd.get('name')).trim()} y quiero reservar cita en ${CONFIG.brand.name}.`,
+      `${CONFIG.brand.greeting}, soy ${String(fd.get('name')).trim()} y quiero reservar cita en ${CONFIG.brand.name}.`,
       `• Mi caniche: ${String(fd.get('dog')).trim()} (${c.size.label}, ${c.size.range})`,
       `• Servicio: ${c.svc.calcLabel}`,
       c.ex.length ? `• Extras: ${c.ex.map(x => x.label).join(', ')}` : null,

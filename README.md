@@ -174,7 +174,7 @@ El resultado se actualiza al instante: rango de precio, tiempo de spa y desglose
 Ejemplo de mensaje que genera el botón «Reservar por WhatsApp» (Mediano + baño spa + mascarilla):
 
 ```text
-Hola Jonatan 👋 Quiero reservar cita en Caniches Pet Grooming.
+Hola Jonatan, quiero reservar cita en Caniches Pet Grooming.
 • Caniche: Mediano (35–45 cm)
 • Servicio: Baño spa de microburbujas
 • Extras: Mascarilla nutritiva del rizo
@@ -218,7 +218,7 @@ Los textos, precios, fotos, reseñas y datos de contacto se cambian en `CONFIG`;
 | `brand.nif` | NIF del aviso legal. Con `null` se muestra «pendiente de completar» |
 | `flags.showPlaceholderBadges` | Muestra la etiqueta «Ejemplo» y la nota de reseñas de ejemplo |
 | `flags.claims` | Interruptores de textos sensibles (ver más abajo) |
-| `photos` | Fotos de Unsplash: `id`, `w`, `h` y `alt` |
+| `photos` | Fotos: `id` (Unsplash) **o** `src` (foto propia, ruta de `img/` o URL), más `w`, `h` y `alt` |
 | `sizes[]` | Tamaños: `id`, `label`, `range`, `base` (€) y `min` (minutos) |
 | `services[]` | Servicios: `id`, `icon` (nombre de Lucide), `title`, `claimTitle`, `blurb`, `tags`, `calcLabel`, `calcNote`, `priceFactor`, `timeFactor` y `photo` |
 | `extras[]` | Extras: `id`, `label`, `price`, `min` y `claim` opcional |
@@ -300,7 +300,11 @@ Conviene confirmar con el cliente que puede respaldar cada afirmación antes de 
 - **Cambiar precios y tiempos.** Ajusta `sizes[].base` y `min`, los factores de `services[]` y `styles[]` y el precio de `extras[]`. La calculadora, el selector de estilos, el formulario y el mensaje de WhatsApp se recalculan solos.
 - **Publicar reseñas reales.** Sustituye las de ejemplo por opiniones reales de Google o Instagram (con permiso), añade `verified: true` y quita `placeholder: true`. Cuando ya no quede ninguna de ejemplo, pon `flags.showPlaceholderBadges` en `false`.
 - **Añadir horario y NIF.** Rellena `brand.hours` y `brand.nif`.
-- **Cambiar fotos.** Sustituye los `id` de `CONFIG.photos`. Con la implementación actual, `photoImg()` siempre construye URLs de Unsplash, así que para usar fotos propias hay que adaptar esa función (y `U()`) para aceptar rutas locales de `img/`.
+- **Cambiar fotos.** Cada entrada de `CONFIG.photos` admite una de dos fuentes:
+  - `id: 'photo-…'` para una foto de Unsplash (ilustrativa, no es trabajo del salón).
+  - `src: 'img/fotos/teddy.webp'` para una foto propia del cliente. Si hay `src`, se usa ese archivo tal cual y se ignora `id`.
+
+  Pasos para sustituir una foto de stock por una propia: súbela a `img/fotos/` ya optimizada (WebP, unos 900 px de ancho), cambia en su entrada `id: '…'` por `src: 'img/fotos/archivo.webp'` y pon sus `w` y `h` reales y un `alt` que describa la foto. Mantén la proporción de la foto original para no deformar la maquetación. El crédito «Fotos: Unsplash» del footer se oculta solo cuando ya no queda ninguna entrada con `id`.
 
 ## Sistema de diseño
 
@@ -412,7 +416,7 @@ También se comprobó que las URLs de las CDN y las 10 fotos de Unsplash respond
 - **Rendimiento del scroll** en escritorio sin optimizar (ver arriba).
 - **Accesibilidad, pendientes menores**: algunas micro-etiquetas miden entre 11,5 y 13,8 px y los enlaces de la navbar de escritorio tienen 39 px de alto.
 - **Datos duplicados a mano**: el contacto aparece también en el JSON-LD y en el `<noscript>`.
-- **Fotos**: `photoImg()` solo admite Unsplash; para fotos propias hay que adaptarla.
+- **Fotos propias**: con `src` el archivo se sirve tal cual, sin redimensionar, así que hay que subirlo ya optimizado. Las fotos de Unsplash sí se piden al ancho necesario. El `preconnect` a `images.unsplash.com` del `<head>` sigue ahí aunque no quede ninguna foto de Unsplash; se puede quitar entonces.
 - **`og:image` relativa**: debe pasar a URL absoluta al publicar para que funcione al compartir.
 - **Compatibilidad**: pensada para navegadores actuales (usa `<dialog>`, `inert`, `@property`, `mask-composite`, `overflow: clip` y `svh`); solo se ha probado en Chrome.
 
